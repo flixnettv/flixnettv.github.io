@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساعدي الذكي</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #121212;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        #status { font-size: 1.2rem; margin-bottom: 20px; color: #aaa; }
+        #response { font-size: 1.5rem; padding: 20px; min-height: 50px; color: #4CAF50; }
+        #micBtn {
+            width: 150px; height: 150px;
+            border-radius: 50%;
+            border: none;
+            background: #2196F3;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.5);
+        }
+        #micBtn.listening { background: #f44336; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div id="status">جاهز يا هندسة.. دوس واتكلم</div>
+    <button id="micBtn">ابدأ الكلام</button>
+    <div id="response"></div>
+
+    <script>
+        const micBtn = document.getElementById('micBtn');
+        const statusText = document.getElementById('status');
+        const responseDiv = document.getElementById('response');
+
+        // رابط الـ Backend بتاعك على Vercel
+        const API_URL = "https://YOUR_VERCEL_URL.vercel.app/ask";
+
+        // إعدادات التعرف على الصوت
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ar-EG'; // اللهجة المصرية
+
+        // إعدادات نطق الكلام
+        const synth = window.speechSynthesis;
+
+        micBtn.onclick = () => {
+            recognition.start();
+            micBtn.classList.add('listening');
+            statusText.innerText = "بسامعك دلوقتي...";
+        };
+
+        recognition.onresult = async (event) => {
+            micBtn.classList.remove('listening');
+            const userText = event.results[0][0].transcript;
+            statusText.innerText = "بفكر في الرد...";
+            responseDiv.innerText = `إنت قلت: ${userText}`;
+
+            // إرسال النص للـ Backend
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: userText })
+                });
+                const data = await res.json();
+                const aiReply = data.reply;
+
+                responseDiv.innerText = aiReply;
+                speak(aiReply);
+                statusText.innerText = "جاهز لأمر جديد";
+            } catch (err) {
+                statusText.innerText = "حصلت مشكلة في الاتصال";
+                console.error(err);
+            }
+        };
+
+        function speak(text) {
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'ar-EG';
+            synth.speak(utter);
+        }
+    </script>
+</body>
+</html>
